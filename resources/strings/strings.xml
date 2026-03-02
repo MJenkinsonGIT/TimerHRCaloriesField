@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<resources>
+    <!-- Ampersand (&) is prohibited in app names even when escaped as &amp;
+         Use spelled-out words only. -->
+    <string id="AppName">Timer Heart Rate Calories</string>
+</resources>

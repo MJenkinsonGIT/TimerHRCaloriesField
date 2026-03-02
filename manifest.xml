@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<iq:manifest version="3" xmlns:iq="http://www.garmin.com/xml/connectiq">
+    <iq:application
+        entry="TimerHRCaloriesApp"
+        id="C7D8E9F0A1B2C3D4E5F6A7B8C9D0E1F2"
+        launcherIcon="@Drawables.LauncherIcon"
+        minApiLevel="5.2.0"
+        name="@Strings.AppName"
+        type="datafield"
+        version="1.0.0">
+
+        <iq:products>
+            <iq:product id="venu3"/>
+        </iq:products>
+
+        <!-- ActivityMonitor needs NO permission — it is core Toybox API.
+             Activity.Info fields are provided automatically to DataFields.
+             No fit-contrib-activities element — data fields work in ALL
+             activities automatically; including that element causes a build error. -->
+        <iq:permissions>
+            <!-- UserProfile required to read HR zone thresholds via getHeartRateZones() -->
+            <iq:uses-permission id="UserProfile"/>
+        </iq:permissions>
+
+        <iq:languages>
+            <iq:language>eng</iq:language>
+        </iq:languages>
+
+    </iq:application>
+</iq:manifest>
