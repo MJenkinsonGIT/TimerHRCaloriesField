@@ -61,7 +61,7 @@ Values below Zone 1 or unavailable display in the default foreground colour (whi
 
 **Timer** — elapsed activity time from `Activity.Info.timerTime` (in milliseconds). Displays as `M:SS` under one hour, `H:MM:SS` for longer sessions.
 
-**Active Min** — today's cumulative active minutes from `ActivityMonitor.Info.activeMinutesDay`, calculated as `moderate + vigorous`. This is the all-day total, not just the current session. Displays as a plain number under 60 minutes, or as `1h30` style for 90+ minutes.
+**Active Min** — today's total time spent in recorded activities, in minutes. This is calculated by summing the duration of all completed activities saved to your Garmin profile today, plus the elapsed time of the current in-progress activity. It is not the same as Garmin's built-in Intensity Minutes — it counts all recorded activity time regardless of intensity. Displays as a plain number under 60 minutes, or as `1h30` style for 90+ minutes.
 
 **Act Cals** — calories burned during the current activity, from `Activity.Info.calories`. Resets when a new activity starts.
 
@@ -142,4 +142,4 @@ Compatibility with other devices has not been tested.
 - All values display `--` before the activity timer starts or if the sensor data is unavailable.
 - Heart rate zone colours are read from your Garmin profile each update cycle. If you have sport-specific zones configured, the correct set is used automatically.
 - **Act Cals** and **Total Cal** are different values. Act Cals counts only what was burned during this session; Total Cal is your full day's energy expenditure including resting metabolic rate.
-- Active Min is a daily running total, not a per-session count. It does not reset when a new activity starts.
+- Active Min is today's total recorded activity time (all completed activities + current session). It is not Garmin's Intensity Minutes — it counts all activity time regardless of intensity, and does not reset when a new activity starts.
