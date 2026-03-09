@@ -31,9 +31,11 @@
 
 import Toybox.Activity;
 import Toybox.ActivityMonitor;
+import Toybox.Application;
 import Toybox.Graphics;
 import Toybox.Lang;
 import Toybox.System;
+import Toybox.Time;
 import Toybox.UserProfile;
 import Toybox.WatchUi;
 
@@ -51,6 +53,12 @@ class TimerHRCaloriesView extends WatchUi.DataField {
     private var _dailyCals    as Number or Null;
     private var _timerMs      as Number or Long or Null;
     private var _dailyActMins as Number or Null;
+
+    // Cached sum of completed activity durations today (seconds).
+    // Refreshed every 60 compute() cycles to avoid iterating history every second.
+    // Initialised to 60 so the first compute() triggers an immediate refresh.
+    private var _historicalActiveSecs as Number;
+    private var _historyCounter       as Number;
 
     // Layout positions (set once in onLayout)
     private var _xCenter     as Number;
@@ -81,6 +89,8 @@ class TimerHRCaloriesView extends WatchUi.DataField {
         _dailyCals    = null;
         _timerMs      = null;
         _dailyActMins = null;
+        _historicalActiveSecs = 0;
+        _historyCounter       = 60; // trigger immediate refresh on first compute()
 
         _xCenter     = 0;
         _xLeft       = 0;
@@ -201,14 +211,73 @@ class TimerHRCaloriesView extends WatchUi.DataField {
         var amInfo  = ActivityMonitor.getInfo();
         _dailyCals  = amInfo.calories;
 
-        var amv = amInfo.activeMinutesDay;
-        if (amv != null) {
-            _dailyActMins = amv.moderate + amv.vigorous;
+        // Total recorded activity time today = completed activities + current timer.
+        // getUserActivityHistory() only contains *saved* (finished) activities, so
+        // adding timerTime doesn't double-count the current activity.
+        // Refreshing the history sum every 60 cycles keeps compute() cost low.
+        _historyCounter = _historyCounter + 1;
+        if (_historyCounter >= 60) {
+            _historyCounter = 0;
+            _historicalActiveSecs = sumTodayActivitySecs();
         }
+        var timerVal = _timerMs;
+        var currentSecs = (timerVal != null) ? (timerVal / 1000).toNumber() : 0;
+        _dailyActMins = (_historicalActiveSecs + currentSecs) / 60;
 
         // Refresh zone thresholds each cycle; getCurrentSport() picks
         // the sport-specific set automatically (or GENERIC as fallback).
         _hrZones = UserProfile.getHeartRateZones(UserProfile.getCurrentSport());
+    }
+
+    // Iterate all saved activities for today and return the total elapsed seconds.
+    //
+    // Uses the device's BASE (standard-time) timezone offset to convert UTC epoch
+    // values to local day numbers via integer division, then compares for equality.
+    //
+    // The base offset is the minimum timeZoneOffset seen across all runs, persisted
+    // in Application.Storage under key "baseTzOffset". Because DST always adds 3600s
+    // (clocks go forward = offset becomes less negative), the standard-time offset
+    // is always the most-negative value observed. e.g. CST=-21600 < CDT=-18600.
+    //
+    // Using the current timeZoneOffset alone fails on DST spring-forward day:
+    // an 11:29pm CST activity has UTC=05:29 next day. With CDT (-18000) applied
+    // it appears as 00:29 today; with CST (-21600) it correctly appears as 23:29
+    // yesterday.
+    //
+    // ClockTime.dst is always 0 on real devices (longstanding Garmin firmware bug)
+    // so it cannot be used to strip the DST component from timeZoneOffset.
+    // Application.Storage minimum-offset approach is the only reliable workaround.
+    private function sumTodayActivitySecs() as Number {
+        var currentOffset = System.getClockTime().timeZoneOffset;
+
+        // Update and persist the minimum (most-negative = standard-time) offset.
+        var storage = Application.Storage;
+        var stored = storage.getValue("baseTzOffset");
+        var baseOffset;
+        if (stored == null || currentOffset < stored) {
+            storage.setValue("baseTzOffset", currentOffset);
+            baseOffset = currentOffset;
+        } else {
+            baseOffset = stored;
+        }
+
+        var todayDay = (Time.now().value() + baseOffset) / 86400;
+
+        var total = 0;
+        var iter  = UserProfile.getUserActivityHistory();
+        var entry = iter.next();
+        while (entry != null) {
+            var st  = entry.startTime;
+            var dur = entry.duration;
+            if (st != null && dur != null) {
+                var actDay = (st.value() + baseOffset) / 86400;
+                if (actDay == todayDay) {
+                    total = total + dur.value();
+                }
+            }
+            entry = iter.next();
+        }
+        return total;
     }
 
     // Return zone colour for a given HR value.
